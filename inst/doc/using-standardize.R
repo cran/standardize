@@ -215,8 +215,6 @@ head(newdata_re)
 ## ------------------------------------------------------------------------
 # predictions using both the fixed and random effects
 preds <- predict(mod, newdata = newdata)
-
-# despite warnings, predictions are correct
 all.equal(preds, fitted(mod))
 
 # predictions using only the fixed effects
@@ -229,7 +227,7 @@ head(preds_fe)
 ## ------------------------------------------------------------------------
 library(afex)
 
-pvals <- mixed(mod, data = sdat$data, check.contrasts = FALSE)
+pvals <- mixed(mod, data = sdat$data, check_contrasts = FALSE)
 
 pvals
 

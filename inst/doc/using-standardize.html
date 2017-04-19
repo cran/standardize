@@ -12,7 +12,7 @@
 
 <meta name="author" content="Christopher D. Eager" />
 
-<meta name="date" content="2017-04-04" />
+<meta name="date" content="2017-04-18" />
 
 <title>Using the standardize package</title>
 
@@ -70,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Using the standardize package</h1>
 <h4 class="author"><em>Christopher D. Eager</em></h4>
-<h4 class="date"><em>2017-04-04</em></h4>
+<h4 class="date"><em>2017-04-18</em></h4>
 
 
 
@@ -633,7 +633,7 @@ sdat$groups
 <span class="co">#&gt; $speaker</span>
 <span class="co">#&gt;  [1] &quot;s01&quot; &quot;s02&quot; &quot;s03&quot; &quot;s04&quot; &quot;s05&quot; &quot;s06&quot; &quot;s07&quot; &quot;s08&quot; &quot;s09&quot; &quot;s10&quot; &quot;s11&quot;</span>
 <span class="co">#&gt; [12] &quot;s12&quot; &quot;s13&quot; &quot;s14&quot; &quot;s15&quot; &quot;s16&quot; &quot;s17&quot; &quot;s18&quot;</span></code></pre></div>
-<p>We can see that all of the regression variables have been place on a similar scale, using the default <strong>scale</strong> argument of 1. The majority of the predictors did not change name, but those which included function calls (<em>log(wordfreq)</em> and <em>scale_by(speechrate ~ speaker)</em>) have been altered so that they are valid variable names. If we were to call <strong>standardize</strong> with <strong>scale = 0.5</strong>, then <em>cdur</em> would still have mean 0 and standard deviation 1, but the predictors would all have scale 0.5:</p>
+<p>We can see that all of the regression variables have been placed on a similar scale, using the default <strong>scale</strong> argument of 1. The majority of the predictors did not change name, but those which included function calls (<em>log(wordfreq)</em> and <em>scale_by(speechrate ~ speaker)</em>) have been altered so that they are valid variable names. If we were to call <strong>standardize</strong> with <strong>scale = 0.5</strong>, then <em>cdur</em> would still have mean 0 and standard deviation 1, but the predictors would all have scale 0.5:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">sdat &lt;-<span class="st"> </span><span class="kw">standardize</span>(cdur ~<span class="st"> </span>place +<span class="st"> </span>stress +<span class="st"> </span>preheight +<span class="st"> </span><span class="kw">log</span>(wordfreq) +
 <span class="st">  </span><span class="kw">scale_by</span>(speechrate ~<span class="st"> </span>speaker) +<span class="st"> </span>(<span class="dv">1</span> |<span class="st"> </span>speaker), ptk, <span class="dt">scale =</span> <span class="fl">0.5</span>)
 
@@ -830,14 +830,12 @@ newdata_re &lt;-<span class="st"> </span><span class="kw">predict</span>(sdat, p
 <span class="co">#&gt; 4     s01</span>
 <span class="co">#&gt; 5     s01</span>
 <span class="co">#&gt; 6     s01</span></code></pre></div>
-<p>This standardized new data can then be used as the <strong>newdata</strong> argument to <strong>predict</strong> with the regression model as the first argument. The <strong>predict</strong> method will generate warnings about contrasts being dropped, but these warnings can be ignored (i.e. the predictions are still correct):</p>
+<p>This standardized new data can then be used as the <strong>newdata</strong> argument to <strong>predict</strong> with the regression model as the first argument. The <strong>predict</strong> method may generate warnings about contrasts being dropped, but these warnings can be ignored (i.e. the predictions are still correct; warnings shouldn’t occur with the latest version of lme4, but may occur for older versions, and will occur for the <strong>predict</strong> method for fixed-effects-only models):</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># predictions using both the fixed and random effects</span>
 preds &lt;-<span class="st"> </span><span class="kw">predict</span>(mod, <span class="dt">newdata =</span> newdata)
 <span class="co">#&gt; Warning: contrasts dropped from factor place</span>
 <span class="co">#&gt; Warning: contrasts dropped from factor stress</span>
 <span class="co">#&gt; Warning: contrasts dropped from factor preheight</span>
-
-<span class="co"># despite warnings, predictions are correct</span>
 <span class="kw">all.equal</span>(preds, <span class="kw">fitted</span>(mod))
 <span class="co">#&gt; [1] TRUE</span>
 
@@ -857,34 +855,46 @@ preds_fe &lt;-<span class="st"> </span><span class="kw">predict</span>(mod, <spa
 </div>
 <div id="obtaining-p-values-with-mixed" class="section level3">
 <h3>Obtaining p-values with <strong>mixed</strong></h3>
-<p>When obtaining p-values for the predictors with the <strong>mixed</strong> function in the <em>afex</em> package, the <strong>check.contrasts</strong> argument should be set to FALSE to ensure that the correct contrasts are used (this shouldn’t matter when a regression model is passed to <strong>mixed</strong>, but if the formula and data elements of the <strong>standardized</strong> object are passed directly to <strong>mixed</strong>, it is necessary; it is best to just always specify <strong>check.contrasts = FALSE</strong>):</p>
+<p>When obtaining p-values for the predictors with the <strong>mixed</strong> function in the <em>afex</em> package, the <strong>check_contrasts</strong> argument should be set to FALSE to ensure that the correct contrasts are used (this shouldn’t matter when a regression model is passed to <strong>mixed</strong>, but if the formula and data elements of the <strong>standardized</strong> object are passed directly to <strong>mixed</strong>, it is necessary; it is best to just always specify <strong>check_contrasts = FALSE</strong>):</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(afex)
-<span class="co">#&gt; Loading required package: reshape2</span>
 <span class="co">#&gt; Loading required package: lsmeans</span>
 <span class="co">#&gt; Loading required package: estimability</span>
 <span class="co">#&gt; ************</span>
-<span class="co">#&gt; Welcome to afex. Important changes in the current version:</span>
-<span class="co">#&gt; - Functions for ANOVAs have been renamed to: aov_car(), aov_ez(), and aov_4().</span>
-<span class="co">#&gt; - ANOVA functions return an object of class 'afex_aov' as default, see: ?aov_car</span>
-<span class="co">#&gt; - 'afex_aov' objects can be passed to lsmeans for contrasts and follow-up tests.</span>
-<span class="co">#&gt; - Reset previous (faster) behavior via: afex_options(return_aov='nice')</span>
-<span class="co">#&gt; - Many more arguments can now be set globally via options, see: afex_options()</span>
+<span class="co">#&gt; Welcome to afex. For support visit: http://afex.singmann.science/</span>
+<span class="co">#&gt; - Functions for ANOVAs: aov_car(), aov_ez(), and aov_4()</span>
+<span class="co">#&gt; - Methods for calculating p-values with mixed(): 'KR', 'S', 'LRT', and 'PB'</span>
+<span class="co">#&gt; - 'afex_aov' and 'mixed' objects can be passed to lsmeans() for follow-up tests</span>
+<span class="co">#&gt; - Get and set global package options with: afex_options()</span>
+<span class="co">#&gt; - Set orthogonal sum-to-zero contrasts globally: set_sum_contrasts()</span>
+<span class="co">#&gt; - For example analyses see: browseVignettes(&quot;afex&quot;)</span>
 <span class="co">#&gt; ************</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Attaching package: 'afex'</span>
+<span class="co">#&gt; The following object is masked from 'package:lme4':</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;     lmer</span>
 
-pvals &lt;-<span class="st"> </span><span class="kw">mixed</span>(mod, <span class="dt">data =</span> sdat$data, <span class="dt">check.contrasts =</span> <span class="ot">FALSE</span>)
+pvals &lt;-<span class="st"> </span><span class="kw">mixed</span>(mod, <span class="dt">data =</span> sdat$data, <span class="dt">check_contrasts =</span> <span class="ot">FALSE</span>)
 <span class="co">#&gt; Formula (the first argument) converted to formula.</span>
-<span class="co">#&gt; Fitting 6 (g)lmer() models:</span>
-<span class="co">#&gt; [......]</span>
-<span class="co">#&gt; Obtaining 5 p-values:</span>
-<span class="co">#&gt; [.....]</span>
+<span class="co">#&gt; Fitting one lmer() model. [DONE]</span>
+<span class="co">#&gt; Calculating p-values. [DONE]</span>
 
 pvals
-<span class="co">#&gt;                        Effect        df F.scaling         F p.value</span>
-<span class="co">#&gt; 1                       place 2, 726.63      1.00      0.03     .97</span>
-<span class="co">#&gt; 2                      stress 2, 726.38      1.00 10.51 ***  &lt;.0001</span>
-<span class="co">#&gt; 3                   preheight 2, 732.84      1.00      1.21     .30</span>
-<span class="co">#&gt; 4                log_wordfreq 1, 731.67      1.00      1.25     .26</span>
-<span class="co">#&gt; 5 scale_speechrate_by_speaker 1, 725.10      1.00 85.35 ***  &lt;.0001</span></code></pre></div>
+<span class="co">#&gt; Mixed Model Anova Table (Type 3 tests, KR-method)</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Model: cdur ~ place + stress + preheight + log_wordfreq + scale_speechrate_by_speaker + </span>
+<span class="co">#&gt; Model:     (1 | speaker)</span>
+<span class="co">#&gt; Data: $</span>
+<span class="co">#&gt; Data: sdat</span>
+<span class="co">#&gt; Data: data</span>
+<span class="co">#&gt;                        Effect        df         F p.value</span>
+<span class="co">#&gt; 1                       place 2, 726.63      0.03     .97</span>
+<span class="co">#&gt; 2                      stress 2, 726.38 10.51 ***  &lt;.0001</span>
+<span class="co">#&gt; 3                   preheight 2, 732.84      1.21     .30</span>
+<span class="co">#&gt; 4                log_wordfreq 1, 731.67      1.25     .26</span>
+<span class="co">#&gt; 5 scale_speechrate_by_speaker 1, 725.10 85.35 ***  &lt;.0001</span>
+<span class="co">#&gt; ---</span>
+<span class="co">#&gt; Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '+' 0.1 ' ' 1</span></code></pre></div>
 </div>
 <div id="obtaining-least-squares-means-with-lsmeans" class="section level3">
 <h3>Obtaining least-squares means with <strong>lsmeans</strong></h3>
@@ -892,7 +902,6 @@ pvals
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(lsmeans)
 
 stress_comparisons &lt;-<span class="st"> </span><span class="kw">lsmeans</span>(mod, pairwise ~<span class="st"> </span>stress)
-<span class="co">#&gt; Loading required namespace: lmerTest</span>
 
 stress_comparisons
 <span class="co">#&gt; $lsmeans</span>
