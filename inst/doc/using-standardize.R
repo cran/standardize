@@ -163,8 +163,8 @@ mean(sdat$data$log_wordfreq)
 sd(sdat$data$log_wordfreq)
 all.equal(scale(log(ptk$wordfreq))[, 1], sdat$data$log_wordfreq[, 1])
 
-with(sdat$data, tapply(scale_speechrate_by_speaker, speaker, mean))
-with(sdat$data, tapply(scale_speechrate_by_speaker, speaker, sd))
+with(sdat$data, tapply(speechrate_scaled_by_speaker, speaker, mean))
+with(sdat$data, tapply(speechrate_scaled_by_speaker, speaker, sd))
 
 sdat$contrasts
 
@@ -187,8 +187,8 @@ mean(sdat$data$log_wordfreq)
 sd(sdat$data$log_wordfreq)
 all.equal(0.5 * scale(log(ptk$wordfreq))[, 1], sdat$data$log_wordfreq[, 1])
 
-with(sdat$data, tapply(scale_speechrate_by_speaker, speaker, mean))
-with(sdat$data, tapply(scale_speechrate_by_speaker, speaker, sd))
+with(sdat$data, tapply(speechrate_scaled_by_speaker, speaker, mean))
+with(sdat$data, tapply(speechrate_scaled_by_speaker, speaker, sd))
 
 sdat$contrasts
 

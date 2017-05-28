@@ -12,7 +12,7 @@
 
 <meta name="author" content="Christopher D. Eager" />
 
-<meta name="date" content="2017-04-18" />
+<meta name="date" content="2017-05-26" />
 
 <title>Using the standardize package</title>
 
@@ -70,12 +70,12 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Using the standardize package</h1>
 <h4 class="author"><em>Christopher D. Eager</em></h4>
-<h4 class="date"><em>2017-04-18</em></h4>
+<h4 class="date"><em>2017-05-26</em></h4>
 
 
 
-<div id="using-the-standardize-package" class="section level1">
-<h1>Using the <em>standardize</em> package</h1>
+<div id="the-standardize-package" class="section level1">
+<h1>The <em>standardize</em> package</h1>
 <p>The <em>standardize</em> package provides tools for controlling continuous variable scaling and factor contrasts. The goal of these standardizations is to keep the regression parameters on similar scales, and to ensure that the intercept (which is the predicted value of an observation when all other coefficients are multiplied by 0) represents the corrected mean (i.e. the predicted value for an observation which is average in every way, holding covariates at their mean values and averaging over group differences in factors). When the predictors are all on a similar scale, there are computational benefits for both frequentist and Bayesian approaches in mixed effects regressions, reasonable Bayesian priors are easier to specify, and regression output is easier to interpret.</p>
 <p>Throughout this vignette, we will use the <strong>ptk</strong> dataset to demonstrate the use of the <em>standardize</em> package. A summary of the data can be seen below. We will first discuss scaling continuous variables with the <strong>scale</strong> function from base <em>R</em>, and with the <strong>scale_by</strong> function from <em>standardize</em>. Then we’ll discuss contrasts for unordered and ordered factors with <strong>named_sum_contr</strong> and <strong>scaled_contr_poly</strong> (respectively). Finally, we will use the <strong>standardize</strong> function to quickly use all of these tools at once.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(standardize)
@@ -503,13 +503,14 @@ sc_0.5_contr3
 <h2>The <strong>standardize</strong> function</h2>
 <p>The <strong>standardize</strong> function implements <strong>scale</strong>, <strong>scale_by</strong>, <strong>named_contr_sum</strong>, and <strong>scaled_contr_poly</strong> automatically, allowing regressions to be easily fit in a standardized space. It takes the following arguments:</p>
 <ul>
-<li>formula: A regression formula, possibly containing random effects.</li>
+<li>formula: A regression formula, possibly containing random effects and/or offsets.</li>
 <li>data: A data.frame containing the variables in the formula.</li>
 <li>family: A regression family (defaults to guassian)</li>
 <li>scale: The desired scale for the predictors (defaults to 1).</li>
 <li>na.action: How observations with NA values should be treated (passed to <strong>model.frame</strong>, default is “na.pass”).</li>
+<li>offset: An optional vector of offsets.</li>
 </ul>
-<p>The function first calls <strong>model.frame</strong>. If <strong>family</strong> is guassian (i.e. a linear model), then the response (i.e. dependent variable) is placed on unit scale (mean 0 and standard deviation 1) regardless of what the <strong>scale</strong> argument to <strong>standardize</strong> is; if the response contains a call to <strong>scale_by</strong>, then it is placed on unit scale within each level of the conditioning factor. Then, random effects groups (if any) are coerced to unordered factors, and any other predictors which are characters or which contain only two unique non-NA values (regardless of their class) are converted to unordered factors and assigned contrasts with <strong>named_contr_sum</strong>, passing along the <strong>scale</strong> argument. Ordered factors are assigned contrasts with <strong>scaled_contr_poly</strong>, passing along the <strong>scale</strong> argument. Continuous predictors which contain a call to <strong>scale_by</strong> are re-calculated passing along the <strong>scale</strong> argument. Finally, continuous predictors which do not contain a call to <strong>scale_by</strong> are scaled using the <strong>scale</strong> function, ensuring that the resulting variable has standard deviation equal to the <strong>scale</strong> argument to <strong>standardize</strong>.</p>
+<p>The function first calls <strong>model.frame</strong>. If <strong>family</strong> is guassian (i.e. a linear model), then the response (i.e. dependent variable) is placed on unit scale (mean 0 and standard deviation 1) regardless of what the <strong>scale</strong> argument to <strong>standardize</strong> is; if the response contains a call to <strong>scale_by</strong>, then it is placed on unit scale within each level of the conditioning factor. For offsets (again, if <strong>family* is gaussian), the values are divided by the standard deviation of the response variable prior to scaling (within-factor-level if </strong>scale_by** is used on the response). Then, for all values of <strong>family</strong>, random effects groups (if any) are coerced to unordered factors, and any other predictors which are characters or which contain only two unique non-NA values (regardless of their class) are converted to unordered factors and assigned contrasts with <strong>named_contr_sum</strong>, passing along the <strong>scale</strong> argument. Ordered factors are assigned contrasts with <strong>scaled_contr_poly</strong>, passing along the <strong>scale</strong> argument. Continuous predictors which contain a call to <strong>scale_by</strong> are re-calculated passing along the <strong>scale</strong> argument. Finally, continuous predictors which do not contain a call to <strong>scale_by</strong> are scaled using the <strong>scale</strong> function, ensuring that the resulting variable has standard deviation equal to the <strong>scale</strong> argument to <strong>standardize</strong>.</p>
 <p>The column names of the model frame are then renamed so that they are valid variable names, and the formula passed to <strong>standardize</strong> is updated with these variable names. A list with class <strong>standardized</strong> is then returned with the following elements:</p>
 <ul>
 <li>call: The call to <strong>standardize</strong> which created the object.</li>
@@ -517,7 +518,8 @@ sc_0.5_contr3
 <li>formula: The regression formula in standardized space (with new names) which can be used along with the <strong>data</strong> element to fit regressions.</li>
 <li>family: The regression family.</li>
 <li>data: A data frame containing the regression variables in the standardized space (renamed to have valid variable names corresponding to those in the <strong>formula</strong> element).</li>
-<li>pred: A <strong>terms</strong> object whose <strong>predvars</strong> attribute allows new data to be placed into the same standardized space as the data in the <strong>data</strong> element.</li>
+<li>pred: A list containing unevaluated function calls that allows the predict method to work.</li>
+<li>offset: If the <strong>offset</strong> argment to <strong>standardize</strong> was used, then it is stored in the standardized object’s offset element (and will be scaled as described above for linear regression).</li>
 <li>variables: A data frame with the name of the original variable, the corresponding name in the standardized data frame and formula, and the class of the variable in the standardized data frame.</li>
 <li>contrasts: A named list of contrasts for all factors in the standardized data frame (or NULL if the regression contains no factors).</li>
 <li>groups: A named list of levels for random effects grouping factors (or NULL if the regression contains no random effects).</li>
@@ -542,32 +544,39 @@ sdat
 <span class="co">#&gt;     scale_by(speechrate ~ speaker) + (1 | speaker), data = ptk)</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Standardized Formula:</span>
-<span class="co">#&gt; cdur ~ place + stress + preheight + log_wordfreq + scale_speechrate_by_speaker + </span>
+<span class="co">#&gt; cdur ~ place + stress + preheight + log_wordfreq + speechrate_scaled_by_speaker + </span>
 <span class="co">#&gt;     (1 | speaker)</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Variables:</span>
-<span class="co">#&gt;  Variable                       Standardized Name           Class   </span>
-<span class="co">#&gt;  cdur                           cdur                        numeric </span>
-<span class="co">#&gt;  place                          place                       factor  </span>
-<span class="co">#&gt;  stress                         stress                      factor  </span>
-<span class="co">#&gt;  preheight                      preheight                   ordered </span>
-<span class="co">#&gt;  log(wordfreq)                  log_wordfreq                numeric </span>
-<span class="co">#&gt;  scale_by(speechrate ~ speaker) scale_speechrate_by_speaker scaledby</span>
-<span class="co">#&gt;  speaker                        speaker                     group   </span>
+<span class="co">#&gt;  Variable                       Standardized Name           </span>
+<span class="co">#&gt;  cdur                           cdur                        </span>
+<span class="co">#&gt;  place                          place                       </span>
+<span class="co">#&gt;  stress                         stress                      </span>
+<span class="co">#&gt;  preheight                      preheight                   </span>
+<span class="co">#&gt;  log(wordfreq)                  log_wordfreq                </span>
+<span class="co">#&gt;  scale_by(speechrate ~ speaker) speechrate_scaled_by_speaker</span>
+<span class="co">#&gt;  speaker                        speaker                     </span>
+<span class="co">#&gt;  Class           </span>
+<span class="co">#&gt;  response.numeric</span>
+<span class="co">#&gt;  factor          </span>
+<span class="co">#&gt;  factor          </span>
+<span class="co">#&gt;  ordered         </span>
+<span class="co">#&gt;  numeric         </span>
+<span class="co">#&gt;  scaledby        </span>
+<span class="co">#&gt;  group           </span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; Response has mean 0 and standard deviation 1</span>
+<span class="co">#&gt; Response has mean 0 and standard deviation 1.</span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; Standardized Scale for the Predictors: 1</span>
-<span class="co">#&gt; Continuous variables have mean 0 and standard deviation 'scale'</span>
+<span class="co">#&gt; Continuous variables have mean 0 and standard deviation 1</span>
 <span class="co">#&gt;   (within-factor-level if scale_by was used)</span>
-<span class="co">#&gt; Unordered factors have sum contrasts with deviation 'scale'</span>
+<span class="co">#&gt; Unordered factors have sum contrasts with deviation 1</span>
 <span class="co">#&gt; Ordered factors have orthogonal polynomial contrasts whose</span>
-<span class="co">#&gt;   columns have standard deviation 'scale'</span>
+<span class="co">#&gt;   columns have standard deviation 1</span>
 <span class="co">#&gt; Grouping factors are coded as unordered factors with default contrasts</span>
 
 <span class="kw">names</span>(sdat)
-<span class="co">#&gt; [1] &quot;call&quot;      &quot;scale&quot;     &quot;formula&quot;   &quot;family&quot;    &quot;data&quot;      &quot;pred&quot;     </span>
-<span class="co">#&gt; [7] &quot;variables&quot; &quot;contrasts&quot; &quot;groups&quot;</span>
+<span class="co">#&gt;  [1] &quot;call&quot;      &quot;scale&quot;     &quot;formula&quot;   &quot;family&quot;    &quot;data&quot;     </span>
+<span class="co">#&gt;  [6] &quot;offset&quot;    &quot;pred&quot;      &quot;variables&quot; &quot;contrasts&quot; &quot;groups&quot;</span>
 
 <span class="kw">head</span>(sdat$data)
 <span class="co">#&gt;          cdur  place     stress preheight log_wordfreq</span>
@@ -577,13 +586,13 @@ sdat
 <span class="co">#&gt; 4  0.01505386 Dental Post-Tonic      High  -1.90076049</span>
 <span class="co">#&gt; 5  0.91283934  Velar      Tonic       Mid  -0.19203879</span>
 <span class="co">#&gt; 6  1.51136300 Dental Post-Tonic      High  -0.22152148</span>
-<span class="co">#&gt;   scale_speechrate_by_speaker speaker</span>
-<span class="co">#&gt; 1                  -0.4984662     s01</span>
-<span class="co">#&gt; 2                   1.3452937     s01</span>
-<span class="co">#&gt; 3                  -0.4984662     s01</span>
-<span class="co">#&gt; 4                   0.6454974     s01</span>
-<span class="co">#&gt; 5                   2.2671736     s01</span>
-<span class="co">#&gt; 6                  -2.3422261     s01</span>
+<span class="co">#&gt;   speechrate_scaled_by_speaker speaker</span>
+<span class="co">#&gt; 1                   -0.4984662     s01</span>
+<span class="co">#&gt; 2                    1.3452937     s01</span>
+<span class="co">#&gt; 3                   -0.4984662     s01</span>
+<span class="co">#&gt; 4                    0.6454974     s01</span>
+<span class="co">#&gt; 5                    2.2671736     s01</span>
+<span class="co">#&gt; 6                   -2.3422261     s01</span>
 
 <span class="kw">mean</span>(sdat$data$cdur)
 <span class="co">#&gt; [1] -1.539605e-16</span>
@@ -597,7 +606,7 @@ sdat
 <span class="kw">all.equal</span>(<span class="kw">scale</span>(<span class="kw">log</span>(ptk$wordfreq))[, <span class="dv">1</span>], sdat$data$log_wordfreq[, <span class="dv">1</span>])
 <span class="co">#&gt; [1] TRUE</span>
 
-<span class="kw">with</span>(sdat$data, <span class="kw">tapply</span>(scale_speechrate_by_speaker, speaker, mean))
+<span class="kw">with</span>(sdat$data, <span class="kw">tapply</span>(speechrate_scaled_by_speaker, speaker, mean))
 <span class="co">#&gt;           s01           s02           s03           s04           s05 </span>
 <span class="co">#&gt; -2.960268e-16  3.165268e-18 -3.119346e-16  1.004790e-16  2.183358e-16 </span>
 <span class="co">#&gt;           s06           s07           s08           s09           s10 </span>
@@ -606,7 +615,7 @@ sdat
 <span class="co">#&gt; -2.923792e-16  3.850162e-16  1.980309e-16  6.325185e-17  1.427623e-16 </span>
 <span class="co">#&gt;           s16           s17           s18 </span>
 <span class="co">#&gt; -2.220446e-16  1.582818e-16 -2.505491e-16</span>
-<span class="kw">with</span>(sdat$data, <span class="kw">tapply</span>(scale_speechrate_by_speaker, speaker, sd))
+<span class="kw">with</span>(sdat$data, <span class="kw">tapply</span>(speechrate_scaled_by_speaker, speaker, sd))
 <span class="co">#&gt; s01 s02 s03 s04 s05 s06 s07 s08 s09 s10 s11 s12 s13 s14 s15 s16 s17 s18 </span>
 <span class="co">#&gt;   1   1   1   1   1   1   1   1   1   1   1   1   1   1   1   1   1   1</span>
 
@@ -645,32 +654,39 @@ sdat
 <span class="co">#&gt;     scale = 0.5)</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Standardized Formula:</span>
-<span class="co">#&gt; cdur ~ place + stress + preheight + log_wordfreq + scale_speechrate_by_speaker + </span>
+<span class="co">#&gt; cdur ~ place + stress + preheight + log_wordfreq + speechrate_scaled_by_speaker + </span>
 <span class="co">#&gt;     (1 | speaker)</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Variables:</span>
-<span class="co">#&gt;  Variable                       Standardized Name           Class   </span>
-<span class="co">#&gt;  cdur                           cdur                        numeric </span>
-<span class="co">#&gt;  place                          place                       factor  </span>
-<span class="co">#&gt;  stress                         stress                      factor  </span>
-<span class="co">#&gt;  preheight                      preheight                   ordered </span>
-<span class="co">#&gt;  log(wordfreq)                  log_wordfreq                numeric </span>
-<span class="co">#&gt;  scale_by(speechrate ~ speaker) scale_speechrate_by_speaker scaledby</span>
-<span class="co">#&gt;  speaker                        speaker                     group   </span>
+<span class="co">#&gt;  Variable                       Standardized Name           </span>
+<span class="co">#&gt;  cdur                           cdur                        </span>
+<span class="co">#&gt;  place                          place                       </span>
+<span class="co">#&gt;  stress                         stress                      </span>
+<span class="co">#&gt;  preheight                      preheight                   </span>
+<span class="co">#&gt;  log(wordfreq)                  log_wordfreq                </span>
+<span class="co">#&gt;  scale_by(speechrate ~ speaker) speechrate_scaled_by_speaker</span>
+<span class="co">#&gt;  speaker                        speaker                     </span>
+<span class="co">#&gt;  Class           </span>
+<span class="co">#&gt;  response.numeric</span>
+<span class="co">#&gt;  factor          </span>
+<span class="co">#&gt;  factor          </span>
+<span class="co">#&gt;  ordered         </span>
+<span class="co">#&gt;  numeric         </span>
+<span class="co">#&gt;  scaledby        </span>
+<span class="co">#&gt;  group           </span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; Response has mean 0 and standard deviation 1</span>
+<span class="co">#&gt; Response has mean 0 and standard deviation 1.</span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; Standardized Scale for the Predictors: 0.5</span>
-<span class="co">#&gt; Continuous variables have mean 0 and standard deviation 'scale'</span>
+<span class="co">#&gt; Continuous variables have mean 0 and standard deviation 0.5</span>
 <span class="co">#&gt;   (within-factor-level if scale_by was used)</span>
-<span class="co">#&gt; Unordered factors have sum contrasts with deviation 'scale'</span>
+<span class="co">#&gt; Unordered factors have sum contrasts with deviation 0.5</span>
 <span class="co">#&gt; Ordered factors have orthogonal polynomial contrasts whose</span>
-<span class="co">#&gt;   columns have standard deviation 'scale'</span>
+<span class="co">#&gt;   columns have standard deviation 0.5</span>
 <span class="co">#&gt; Grouping factors are coded as unordered factors with default contrasts</span>
 
 <span class="kw">names</span>(sdat)
-<span class="co">#&gt; [1] &quot;call&quot;      &quot;scale&quot;     &quot;formula&quot;   &quot;family&quot;    &quot;data&quot;      &quot;pred&quot;     </span>
-<span class="co">#&gt; [7] &quot;variables&quot; &quot;contrasts&quot; &quot;groups&quot;</span>
+<span class="co">#&gt;  [1] &quot;call&quot;      &quot;scale&quot;     &quot;formula&quot;   &quot;family&quot;    &quot;data&quot;     </span>
+<span class="co">#&gt;  [6] &quot;offset&quot;    &quot;pred&quot;      &quot;variables&quot; &quot;contrasts&quot; &quot;groups&quot;</span>
 
 <span class="kw">head</span>(sdat$data)
 <span class="co">#&gt;          cdur  place     stress preheight log_wordfreq</span>
@@ -680,13 +696,13 @@ sdat
 <span class="co">#&gt; 4  0.01505386 Dental Post-Tonic      High  -0.95038025</span>
 <span class="co">#&gt; 5  0.91283934  Velar      Tonic       Mid  -0.09601939</span>
 <span class="co">#&gt; 6  1.51136300 Dental Post-Tonic      High  -0.11076074</span>
-<span class="co">#&gt;   scale_speechrate_by_speaker speaker</span>
-<span class="co">#&gt; 1                  -0.2492331     s01</span>
-<span class="co">#&gt; 2                   0.6726468     s01</span>
-<span class="co">#&gt; 3                  -0.2492331     s01</span>
-<span class="co">#&gt; 4                   0.3227487     s01</span>
-<span class="co">#&gt; 5                   1.1335868     s01</span>
-<span class="co">#&gt; 6                  -1.1711131     s01</span>
+<span class="co">#&gt;   speechrate_scaled_by_speaker speaker</span>
+<span class="co">#&gt; 1                   -0.2492331     s01</span>
+<span class="co">#&gt; 2                    0.6726468     s01</span>
+<span class="co">#&gt; 3                   -0.2492331     s01</span>
+<span class="co">#&gt; 4                    0.3227487     s01</span>
+<span class="co">#&gt; 5                    1.1335868     s01</span>
+<span class="co">#&gt; 6                   -1.1711131     s01</span>
 
 <span class="kw">mean</span>(sdat$data$cdur)
 <span class="co">#&gt; [1] -1.539605e-16</span>
@@ -700,7 +716,7 @@ sdat
 <span class="kw">all.equal</span>(<span class="fl">0.5</span> *<span class="st"> </span><span class="kw">scale</span>(<span class="kw">log</span>(ptk$wordfreq))[, <span class="dv">1</span>], sdat$data$log_wordfreq[, <span class="dv">1</span>])
 <span class="co">#&gt; [1] TRUE</span>
 
-<span class="kw">with</span>(sdat$data, <span class="kw">tapply</span>(scale_speechrate_by_speaker, speaker, mean))
+<span class="kw">with</span>(sdat$data, <span class="kw">tapply</span>(speechrate_scaled_by_speaker, speaker, mean))
 <span class="co">#&gt;           s01           s02           s03           s04           s05 </span>
 <span class="co">#&gt; -1.480134e-16  1.582634e-18 -1.559673e-16  5.023952e-17  1.091679e-16 </span>
 <span class="co">#&gt;           s06           s07           s08           s09           s10 </span>
@@ -709,7 +725,7 @@ sdat
 <span class="co">#&gt; -1.461896e-16  1.925081e-16  9.901544e-17  3.162593e-17  7.138116e-17 </span>
 <span class="co">#&gt;           s16           s17           s18 </span>
 <span class="co">#&gt; -1.110223e-16  7.914090e-17 -1.252746e-16</span>
-<span class="kw">with</span>(sdat$data, <span class="kw">tapply</span>(scale_speechrate_by_speaker, speaker, sd))
+<span class="kw">with</span>(sdat$data, <span class="kw">tapply</span>(speechrate_scaled_by_speaker, speaker, sd))
 <span class="co">#&gt; s01 s02 s03 s04 s05 s06 s07 s08 s09 s10 s11 s12 s13 s14 s15 s16 s17 s18 </span>
 <span class="co">#&gt; 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5</span>
 
@@ -751,7 +767,7 @@ mod &lt;-<span class="st"> </span><span class="kw">lmer</span>(sdat$formula, sda
 <span class="kw">summary</span>(mod)
 <span class="co">#&gt; Linear mixed model fit by REML ['lmerMod']</span>
 <span class="co">#&gt; Formula: </span>
-<span class="co">#&gt; cdur ~ place + stress + preheight + log_wordfreq + scale_speechrate_by_speaker +  </span>
+<span class="co">#&gt; cdur ~ place + stress + preheight + log_wordfreq + speechrate_scaled_by_speaker +  </span>
 <span class="co">#&gt;     (1 | speaker)</span>
 <span class="co">#&gt;    Data: sdat$data</span>
 <span class="co">#&gt; </span>
@@ -768,16 +784,16 @@ mod &lt;-<span class="st"> </span><span class="kw">lmer</span>(sdat$formula, sda
 <span class="co">#&gt; Number of obs: 751, groups:  speaker, 18</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Fixed effects:</span>
-<span class="co">#&gt;                             Estimate Std. Error t value</span>
-<span class="co">#&gt; (Intercept)                  0.01576    0.07946   0.198</span>
-<span class="co">#&gt; placeBilabial                0.01651    0.09553   0.173</span>
-<span class="co">#&gt; placeDental                 -0.02341    0.09183  -0.255</span>
-<span class="co">#&gt; stressPost-Tonic            -0.12491    0.09681  -1.290</span>
-<span class="co">#&gt; stressTonic                  0.42435    0.09595   4.423</span>
-<span class="co">#&gt; preheight.L                  0.03529    0.09331   0.378</span>
-<span class="co">#&gt; preheight.Q                  0.11910    0.07848   1.518</span>
-<span class="co">#&gt; log_wordfreq                -0.07557    0.06763  -1.117</span>
-<span class="co">#&gt; scale_speechrate_by_speaker -0.61373    0.06643  -9.239</span>
+<span class="co">#&gt;                              Estimate Std. Error t value</span>
+<span class="co">#&gt; (Intercept)                   0.01576    0.07946   0.198</span>
+<span class="co">#&gt; placeBilabial                 0.01651    0.09553   0.173</span>
+<span class="co">#&gt; placeDental                  -0.02341    0.09183  -0.255</span>
+<span class="co">#&gt; stressPost-Tonic             -0.12491    0.09681  -1.290</span>
+<span class="co">#&gt; stressTonic                   0.42435    0.09595   4.423</span>
+<span class="co">#&gt; preheight.L                   0.03529    0.09331   0.378</span>
+<span class="co">#&gt; preheight.Q                   0.11910    0.07848   1.518</span>
+<span class="co">#&gt; log_wordfreq                 -0.07557    0.06763  -1.117</span>
+<span class="co">#&gt; speechrate_scaled_by_speaker -0.61373    0.06643  -9.239</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Correlation of Fixed Effects:</span>
 <span class="co">#&gt;             (Intr) plcBlb plcDnt strP-T strssT prhg.L prhg.Q lg_wrd</span>
@@ -788,7 +804,7 @@ mod &lt;-<span class="st"> </span><span class="kw">lmer</span>(sdat$formula, sda
 <span class="co">#&gt; preheight.L  0.009  0.075 -0.106 -0.272  0.276                     </span>
 <span class="co">#&gt; preheight.Q  0.083 -0.041 -0.127  0.029 -0.059  0.023              </span>
 <span class="co">#&gt; log_wordfrq  0.005 -0.092  0.062 -0.131 -0.029  0.106  0.093       </span>
-<span class="co">#&gt; scl_spchr__  0.007  0.015 -0.043  0.058  0.046  0.061  0.073  0.013</span></code></pre></div>
+<span class="co">#&gt; spchrt_sc__  0.007  0.015 -0.043  0.058  0.046  0.061  0.073  0.013</span></code></pre></div>
 </div>
 <div id="predicting-new-data" class="section level3">
 <h3>Predicting new data</h3>
@@ -798,13 +814,13 @@ newdata_fe &lt;-<span class="st"> </span><span class="kw">predict</span>(sdat, p
 newdata_re &lt;-<span class="st"> </span><span class="kw">predict</span>(sdat, ptk, <span class="dt">fixed =</span> <span class="ot">FALSE</span>)
 
 <span class="kw">head</span>(newdata)
-<span class="co">#&gt;    place     stress preheight log_wordfreq scale_speechrate_by_speaker</span>
-<span class="co">#&gt; 1  Velar Unstressed       Low  -0.82376808                  -0.2492331</span>
-<span class="co">#&gt; 2  Velar Post-Tonic      High  -0.82376808                   0.6726468</span>
-<span class="co">#&gt; 3 Dental Unstressed      High  -0.02785172                  -0.2492331</span>
-<span class="co">#&gt; 4 Dental Post-Tonic      High  -0.95038025                   0.3227487</span>
-<span class="co">#&gt; 5  Velar      Tonic       Mid  -0.09601939                   1.1335868</span>
-<span class="co">#&gt; 6 Dental Post-Tonic      High  -0.11076074                  -1.1711131</span>
+<span class="co">#&gt;    place     stress preheight log_wordfreq speechrate_scaled_by_speaker</span>
+<span class="co">#&gt; 1  Velar Unstressed       Low  -0.82376808                   -0.2492331</span>
+<span class="co">#&gt; 2  Velar Post-Tonic      High  -0.82376808                    0.6726468</span>
+<span class="co">#&gt; 3 Dental Unstressed      High  -0.02785172                   -0.2492331</span>
+<span class="co">#&gt; 4 Dental Post-Tonic      High  -0.95038025                    0.3227487</span>
+<span class="co">#&gt; 5  Velar      Tonic       Mid  -0.09601939                    1.1335868</span>
+<span class="co">#&gt; 6 Dental Post-Tonic      High  -0.11076074                   -1.1711131</span>
 <span class="co">#&gt;   speaker</span>
 <span class="co">#&gt; 1     s01</span>
 <span class="co">#&gt; 2     s01</span>
@@ -814,13 +830,13 @@ newdata_re &lt;-<span class="st"> </span><span class="kw">predict</span>(sdat, p
 <span class="co">#&gt; 6     s01</span>
 
 <span class="kw">head</span>(newdata_fe)
-<span class="co">#&gt;    place     stress preheight log_wordfreq scale_speechrate_by_speaker</span>
-<span class="co">#&gt; 1  Velar Unstressed       Low  -0.82376808                  -0.2492331</span>
-<span class="co">#&gt; 2  Velar Post-Tonic      High  -0.82376808                   0.6726468</span>
-<span class="co">#&gt; 3 Dental Unstressed      High  -0.02785172                  -0.2492331</span>
-<span class="co">#&gt; 4 Dental Post-Tonic      High  -0.95038025                   0.3227487</span>
-<span class="co">#&gt; 5  Velar      Tonic       Mid  -0.09601939                   1.1335868</span>
-<span class="co">#&gt; 6 Dental Post-Tonic      High  -0.11076074                  -1.1711131</span>
+<span class="co">#&gt;    place     stress preheight log_wordfreq speechrate_scaled_by_speaker</span>
+<span class="co">#&gt; 1  Velar Unstressed       Low  -0.82376808                   -0.2492331</span>
+<span class="co">#&gt; 2  Velar Post-Tonic      High  -0.82376808                    0.6726468</span>
+<span class="co">#&gt; 3 Dental Unstressed      High  -0.02785172                   -0.2492331</span>
+<span class="co">#&gt; 4 Dental Post-Tonic      High  -0.95038025                    0.3227487</span>
+<span class="co">#&gt; 5  Velar      Tonic       Mid  -0.09601939                    1.1335868</span>
+<span class="co">#&gt; 6 Dental Post-Tonic      High  -0.11076074                   -1.1711131</span>
 
 <span class="kw">head</span>(newdata_re)
 <span class="co">#&gt;   speaker</span>
@@ -833,17 +849,11 @@ newdata_re &lt;-<span class="st"> </span><span class="kw">predict</span>(sdat, p
 <p>This standardized new data can then be used as the <strong>newdata</strong> argument to <strong>predict</strong> with the regression model as the first argument. The <strong>predict</strong> method may generate warnings about contrasts being dropped, but these warnings can be ignored (i.e. the predictions are still correct; warnings shouldn’t occur with the latest version of lme4, but may occur for older versions, and will occur for the <strong>predict</strong> method for fixed-effects-only models):</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># predictions using both the fixed and random effects</span>
 preds &lt;-<span class="st"> </span><span class="kw">predict</span>(mod, <span class="dt">newdata =</span> newdata)
-<span class="co">#&gt; Warning: contrasts dropped from factor place</span>
-<span class="co">#&gt; Warning: contrasts dropped from factor stress</span>
-<span class="co">#&gt; Warning: contrasts dropped from factor preheight</span>
 <span class="kw">all.equal</span>(preds, <span class="kw">fitted</span>(mod))
 <span class="co">#&gt; [1] TRUE</span>
 
 <span class="co"># predictions using only the fixed effects</span>
 preds_fe &lt;-<span class="st"> </span><span class="kw">predict</span>(mod, <span class="dt">newdata =</span> newdata_fe, <span class="dt">re.form =</span> <span class="ot">NA</span>)
-<span class="co">#&gt; Warning: contrasts dropped from factor place</span>
-<span class="co">#&gt; Warning: contrasts dropped from factor stress</span>
-<span class="co">#&gt; Warning: contrasts dropped from factor preheight</span>
 
 <span class="kw">head</span>(preds)
 <span class="co">#&gt;           1           2           3           4           5           6 </span>
@@ -882,17 +892,17 @@ pvals &lt;-<span class="st"> </span><span class="kw">mixed</span>(mod, <span cla
 pvals
 <span class="co">#&gt; Mixed Model Anova Table (Type 3 tests, KR-method)</span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; Model: cdur ~ place + stress + preheight + log_wordfreq + scale_speechrate_by_speaker + </span>
+<span class="co">#&gt; Model: cdur ~ place + stress + preheight + log_wordfreq + speechrate_scaled_by_speaker + </span>
 <span class="co">#&gt; Model:     (1 | speaker)</span>
 <span class="co">#&gt; Data: $</span>
 <span class="co">#&gt; Data: sdat</span>
 <span class="co">#&gt; Data: data</span>
-<span class="co">#&gt;                        Effect        df         F p.value</span>
-<span class="co">#&gt; 1                       place 2, 726.63      0.03     .97</span>
-<span class="co">#&gt; 2                      stress 2, 726.38 10.51 ***  &lt;.0001</span>
-<span class="co">#&gt; 3                   preheight 2, 732.84      1.21     .30</span>
-<span class="co">#&gt; 4                log_wordfreq 1, 731.67      1.25     .26</span>
-<span class="co">#&gt; 5 scale_speechrate_by_speaker 1, 725.10 85.35 ***  &lt;.0001</span>
+<span class="co">#&gt;                         Effect        df         F p.value</span>
+<span class="co">#&gt; 1                        place 2, 726.63      0.03     .97</span>
+<span class="co">#&gt; 2                       stress 2, 726.38 10.51 ***  &lt;.0001</span>
+<span class="co">#&gt; 3                    preheight 2, 732.84      1.21     .30</span>
+<span class="co">#&gt; 4                 log_wordfreq 1, 731.67      1.25     .26</span>
+<span class="co">#&gt; 5 speechrate_scaled_by_speaker 1, 725.10 85.35 ***  &lt;.0001</span>
 <span class="co">#&gt; ---</span>
 <span class="co">#&gt; Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '+' 0.1 ' ' 1</span></code></pre></div>
 </div>
@@ -927,6 +937,13 @@ stress_comparisons
 <div id="conclusion" class="section level2">
 <h2>Conclusion</h2>
 <p>The <em>standardize</em> package provides several functions which aid in placing regression variables on similar scales, namely <strong>scale_by</strong>, <strong>named_contr_sum</strong>, and <strong>scaled_contr_poly</strong>. The <strong>standardize</strong> function offers a convenient way to make use of these functions (along with the <strong>scale</strong> function in base <em>R</em>) automatically, resulting in a <strong>standardized</strong> object which contains a standardized formula and data frame that can be passed to regression fitting functions. The most common use of the <em>standardize</em> package is to call the <strong>standardize</strong> function, passing the same <strong>formula</strong>, <strong>data</strong>, and <strong>family</strong> arguments as would normally be passed to a regression fitting function, leaving the <strong>scale</strong> argument and <strong>na.action</strong> arguments at their defaults, and then passing the <strong>formula</strong> and <strong>data</strong> elements of the <strong>standardized</strong> object on to the regression fitting function with all other options for the regression fitting function specified as they would normally be specified.</p>
+</div>
+<div id="references" class="section level2">
+<h2>References</h2>
+<p>If you use the <em>standardize</em> package in a publication, please cite:</p>
+<pre><code>Eager, Christopher D. (2017). standardize: Tools for Standardizing Variables for Regression in R. R package version 0.2.0. https://CRAN.R-project.org/package=standardize</code></pre>
+<p>If you analyze the <strong>ptk</strong> dataset in a publication, please cite:</p>
+<pre><code>Eager, Christopher D. (2017). Contrast preservation and constraints on individual phonetic variation. Doctoral thesis. University of Illinois at Urbana-Champaign.</code></pre>
 </div>
 </div>
 
