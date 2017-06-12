@@ -1,7 +1,7 @@
 Package: standardize
 Type: Package
 Title: Tools for Standardizing Variables for Regression in R
-Version: 0.2.0
+Version: 0.2.1
 Authors@R: person("Christopher D.", "Eager",
     email = "eagerstats@gmail.com", role = c("aut", "cre"))
 Description: Tools which allow regression variables to be placed on similar
@@ -20,8 +20,8 @@ Suggests: testthat, knitr, rmarkdown, afex (>= 0.17-8), lsmeans (>=
         2.25-5), lmerTest (>= 2.0-33)
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2017-05-28 00:53:52 UTC; Admin
+Packaged: 2017-06-11 14:18:29 UTC; Admin
 Author: Christopher D. Eager [aut, cre]
 Maintainer: Christopher D. Eager <eagerstats@gmail.com>
 Repository: CRAN
-Date/Publication: 2017-05-28 07:25:28 UTC
+Date/Publication: 2017-06-12 04:53:16 UTC

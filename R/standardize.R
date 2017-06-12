@@ -71,12 +71,14 @@
 #' @param family A regression \code{\link[stats]{family}} (default gaussian).
 #' @param scale The desired scale for the regression frame. Must be a single
 #'   positive number. See 'Details'.
-#' @param na.action See \code{\link[stats]{model.frame}}.
 #' @param offset An optional \code{\link[stats]{offset}} vector. Offsets can
 #'   also be included in the \code{formula} (e.g. \code{y ~ x + offset(o)}), but
 #'   if this is done, then the column \code{o} (in this example) must be in any 
 #'   data frame passed as the \code{newdata} argument to 
-#'   \code{\link[=predict.standardized]{predict}}. 
+#'   \code{\link[=predict.standardized]{predict}}.
+#' @param ... Currently unused.  If \code{na.action} is specified in \code{...}
+#'   and is anything other than \code{na.pass}, a warning is issued and the argument
+#'   argument is ignored.
 #' 
 #' @return A \code{\link[=standardized-class]{standardized}} object. The
 #'   \code{formula}, \code{data}, and \code{offset} elements of the object can 
@@ -89,6 +91,13 @@
 #'   transformation of the numeric variable in a \code{\link{scale_by}} call.
 #'   If \code{\link[stats]{poly}} is used, then the \code{lsmeans} function
 #'   will yield misleading results (as would normally be the case).
+#'
+#'   In previous versions of \code{standardize} (v0.2.0 and earlier),
+#'   \code{na.action} could be specified.  Starting with v0.2.1, specifying
+#'   something other than \code{na.pass} is ignored with a warning.  Use of
+#'   \code{na.omit} and \code{na.exclude} should be done when calling regression
+#'   fitting functions using the elements returned in the 
+#'   \code{\link[=standardized-class]{standardized}} object.
 #'
 #' @seealso For scaling and contrasts, see \code{\link[base]{scale}},
 #'   \code{\link{scale_by}}, \code{\link{named_contr_sum}}, and
@@ -106,51 +115,52 @@
 #' dat$subj <- rep(1:30, each = 18)
 #' dat$y <- rnorm(nrow(dat), -2, 5)
 #' 
-#' sdat <- standardize(y ~ log(x + 1) + scale_by(z ~ subj) + ufac + ofac +
+#' sobj <- standardize(y ~ log(x + 1) + scale_by(z ~ subj) + ufac + ofac +
 #'   (1 | subj), dat)
 #' 
-#' sdat
-#' sdat$formula
+#' sobj
+#' sobj$formula
 #' head(dat)
-#' head(sdat$data)
-#' sdat$contrasts
-#' sdat$groups
-#' mean(sdat$data$y)
-#' sd(sdat$data$y)
-#' mean(sdat$data$log_x.p.1)
-#' sd(sdat$data$log_x.p.1)
-#' with(sdat$data, tapply(z_scaled_by_subj, subj, mean))
-#' with(sdat$data, tapply(z_scaled_by_subj, subj, sd))
+#' head(sobj$data)
+#' sobj$contrasts
+#' sobj$groups
+#' mean(sobj$data$y)
+#' sd(sobj$data$y)
+#' mean(sobj$data$log_x.p.1)
+#' sd(sobj$data$log_x.p.1)
+#' with(sobj$data, tapply(z_scaled_by_subj, subj, mean))
+#' with(sobj$data, tapply(z_scaled_by_subj, subj, sd))
 #' 
-#' sdat <- standardize(y ~ log(x + 1) + scale_by(z ~ subj) + ufac + ofac +
+#' sobj <- standardize(y ~ log(x + 1) + scale_by(z ~ subj) + ufac + ofac +
 #'   (1 | subj), dat, scale = 0.5)
 #' 
-#' sdat
-#' sdat$formula
+#' sobj
+#' sobj$formula
 #' head(dat)
-#' head(sdat$data)
-#' sdat$contrasts
-#' sdat$groups
-#' mean(sdat$data$y)
-#' sd(sdat$data$y)
-#' mean(sdat$data$log_x.p.1)
-#' sd(sdat$data$log_x.p.1)
-#' with(sdat$data, tapply(z_scaled_by_subj, subj, mean))
-#' with(sdat$data, tapply(z_scaled_by_subj, subj, sd))
+#' head(sobj$data)
+#' sobj$contrasts
+#' sobj$groups
+#' mean(sobj$data$y)
+#' sd(sobj$data$y)
+#' mean(sobj$data$log_x.p.1)
+#' sd(sobj$data$log_x.p.1)
+#' with(sobj$data, tapply(z_scaled_by_subj, subj, mean))
+#' with(sobj$data, tapply(z_scaled_by_subj, subj, sd))
 #'
 #' \dontrun{
-#' mod <- lmer(sdat$formula, sdat$data)
+#' mod <- lmer(sobj$formula, sobj$data)
 #' # this next line causes warnings about contrasts being dropped, but
 #' # these warnings can be ignored (i.e. the statement still evaluates to TRUE)
-#' all.equal(predict(mod, newdata = predict(sdat, dat)), fitted(mod))
+#' all.equal(predict(mod, newdata = predict(sobj, dat)), fitted(mod))
 #' }
 #' 
 #' @importFrom lme4 subbars
 #'
 #' @export
-standardize <- function(formula, data, family = gaussian, scale = 1,
-                        na.action = "na.pass", offset) {
+standardize <- function(formula, data, family = gaussian, scale = 1, offset, ...) {
   mc <- match.call()
+  
+  check_dots_standardize(...)
   
   formula <- stats::formula(formula)
   if (!inherits(formula, "formula")) {
@@ -164,20 +174,14 @@ standardize <- function(formula, data, family = gaussian, scale = 1,
   if (!is.data.frame(data)) stop("'data' must be a data.frame")
   attr(data, "terms") <- NULL
   
-  family <- get_family(family)
-  gau <- isTRUE(all.equal(family, gaussian()))
+  gau <- is.linear(family <- get_family(family))
   
   if (!is.scalar(scale, 1)) {
     stop("'scale' must be a single positive number")
   }
   
-  mf <- mc
-  mf[[1]] <- quote(stats::model.frame)
-  mf$formula <- lme4::subbars(formula)
-  mf$drop.unused.levels = TRUE
-  mf$na.action <- na.action
-  mf[c("family", "scale", "offset")] <- NULL
-  mf <- eval(mf, parent.frame())
+  mf <- stats::model.frame(formula = lme4::subbars(formula), data = data,
+    na.action = na.pass, drop.unused.levels = TRUE)
   
   p <- attr(attr(mf, "terms"), "predvars")
   
@@ -205,7 +209,7 @@ standardize <- function(formula, data, family = gaussian, scale = 1,
   # the call to stats::model.frame and are handling it separately.
   # The goal is to produce the equivalent of the 'data' arg to a reg func,
   # not a model frame (which is why weights, etastart, etc aren't args to
-  # standardize)
+  # standardize and na.action is always set to na.pass)
   if (length(o <- grep("^offset\\(", colnames(mf)))) {
     check_offset(mf[o], mf[[1]])
     colnames(mf)[o] <- substr(colnames(mf)[o], 8, nchar(colnames(mf)[o]) - 1)

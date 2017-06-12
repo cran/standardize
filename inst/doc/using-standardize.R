@@ -144,67 +144,67 @@ ptk$preheight[ptk$prevowel %in% c("i", "u")] <- "High"
 ptk$preheight <- factor(ptk$preheight, ordered = TRUE, levels = c("Low",
   "Mid", "High"))
 
-sdat <- standardize(cdur ~ place + stress + preheight + log(wordfreq) +
+sobj <- standardize(cdur ~ place + stress + preheight + log(wordfreq) +
   scale_by(speechrate ~ speaker) + (1 | speaker), ptk)
 
 ## ------------------------------------------------------------------------
-is.standardized(sdat)
+is.standardized(sobj)
 
-sdat
+sobj
 
-names(sdat)
+names(sobj)
 
-head(sdat$data)
+head(sobj$data)
 
-mean(sdat$data$cdur)
-sd(sdat$data$cdur)
+mean(sobj$data$cdur)
+sd(sobj$data$cdur)
 
-mean(sdat$data$log_wordfreq)
-sd(sdat$data$log_wordfreq)
-all.equal(scale(log(ptk$wordfreq))[, 1], sdat$data$log_wordfreq[, 1])
+mean(sobj$data$log_wordfreq)
+sd(sobj$data$log_wordfreq)
+all.equal(scale(log(ptk$wordfreq))[, 1], sobj$data$log_wordfreq[, 1])
 
-with(sdat$data, tapply(speechrate_scaled_by_speaker, speaker, mean))
-with(sdat$data, tapply(speechrate_scaled_by_speaker, speaker, sd))
+with(sobj$data, tapply(speechrate_scaled_by_speaker, speaker, mean))
+with(sobj$data, tapply(speechrate_scaled_by_speaker, speaker, sd))
 
-sdat$contrasts
+sobj$contrasts
 
-sdat$groups
+sobj$groups
 
 ## ------------------------------------------------------------------------
-sdat <- standardize(cdur ~ place + stress + preheight + log(wordfreq) +
+sobj <- standardize(cdur ~ place + stress + preheight + log(wordfreq) +
   scale_by(speechrate ~ speaker) + (1 | speaker), ptk, scale = 0.5)
 
-sdat
+sobj
 
-names(sdat)
+names(sobj)
 
-head(sdat$data)
+head(sobj$data)
 
-mean(sdat$data$cdur)
-sd(sdat$data$cdur)
+mean(sobj$data$cdur)
+sd(sobj$data$cdur)
 
-mean(sdat$data$log_wordfreq)
-sd(sdat$data$log_wordfreq)
-all.equal(0.5 * scale(log(ptk$wordfreq))[, 1], sdat$data$log_wordfreq[, 1])
+mean(sobj$data$log_wordfreq)
+sd(sobj$data$log_wordfreq)
+all.equal(0.5 * scale(log(ptk$wordfreq))[, 1], sobj$data$log_wordfreq[, 1])
 
-with(sdat$data, tapply(speechrate_scaled_by_speaker, speaker, mean))
-with(sdat$data, tapply(speechrate_scaled_by_speaker, speaker, sd))
+with(sobj$data, tapply(speechrate_scaled_by_speaker, speaker, mean))
+with(sobj$data, tapply(speechrate_scaled_by_speaker, speaker, sd))
 
-sdat$contrasts
+sobj$contrasts
 
-sdat$groups
+sobj$groups
 
 ## ------------------------------------------------------------------------
 library(lme4)
 
-mod <- lmer(sdat$formula, sdat$data)
+mod <- lmer(sobj$formula, sobj$data)
 
 summary(mod)
 
 ## ------------------------------------------------------------------------
-newdata <- predict(sdat, ptk)
-newdata_fe <- predict(sdat, ptk, random = FALSE)
-newdata_re <- predict(sdat, ptk, fixed = FALSE)
+newdata <- predict(sobj, ptk)
+newdata_fe <- predict(sobj, ptk, random = FALSE)
+newdata_re <- predict(sobj, ptk, fixed = FALSE)
 
 head(newdata)
 
@@ -227,7 +227,7 @@ head(preds_fe)
 ## ------------------------------------------------------------------------
 library(afex)
 
-pvals <- mixed(mod, data = sdat$data, check_contrasts = FALSE)
+pvals <- mixed(mod, data = sobj$data, check_contrasts = FALSE)
 
 pvals
 

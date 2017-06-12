@@ -4,8 +4,7 @@
 \alias{standardize}
 \title{Standardize a formula and data frame for regression.}
 \usage{
-standardize(formula, data, family = gaussian, scale = 1,
-  na.action = "na.pass", offset)
+standardize(formula, data, family = gaussian, scale = 1, offset, ...)
 }
 \arguments{
 \item{formula}{A regression \code{\link[stats]{formula}}.}
@@ -17,13 +16,15 @@ standardize(formula, data, family = gaussian, scale = 1,
 \item{scale}{The desired scale for the regression frame. Must be a single
 positive number. See 'Details'.}
 
-\item{na.action}{See \code{\link[stats]{model.frame}}.}
-
 \item{offset}{An optional \code{\link[stats]{offset}} vector. Offsets can
 also be included in the \code{formula} (e.g. \code{y ~ x + offset(o)}), but
 if this is done, then the column \code{o} (in this example) must be in any 
 data frame passed as the \code{newdata} argument to 
 \code{\link[=predict.standardized]{predict}}.}
+
+\item{...}{Currently unused.  If \code{na.action} is specified in \code{...}
+and is anything other than \code{na.pass}, a warning is issued and the argument
+argument is ignored.}
 }
 \value{
 A \code{\link[=standardized-class]{standardized}} object. The
@@ -104,6 +105,13 @@ in the case of \code{\link{scale_by}} calls).
   transformation of the numeric variable in a \code{\link{scale_by}} call.
   If \code{\link[stats]{poly}} is used, then the \code{lsmeans} function
   will yield misleading results (as would normally be the case).
+
+  In previous versions of \code{standardize} (v0.2.0 and earlier),
+  \code{na.action} could be specified.  Starting with v0.2.1, specifying
+  something other than \code{na.pass} is ignored with a warning.  Use of
+  \code{na.omit} and \code{na.exclude} should be done when calling regression
+  fitting functions using the elements returned in the 
+  \code{\link[=standardized-class]{standardized}} object.
 }
 \examples{
 dat <- expand.grid(ufac = letters[1:3], ofac = 1:3)
@@ -114,43 +122,43 @@ dat$z <- rnorm(nrow(dat), rep(rnorm(30), each = 18), rep(runif(30), each = 18))
 dat$subj <- rep(1:30, each = 18)
 dat$y <- rnorm(nrow(dat), -2, 5)
 
-sdat <- standardize(y ~ log(x + 1) + scale_by(z ~ subj) + ufac + ofac +
+sobj <- standardize(y ~ log(x + 1) + scale_by(z ~ subj) + ufac + ofac +
   (1 | subj), dat)
 
-sdat
-sdat$formula
+sobj
+sobj$formula
 head(dat)
-head(sdat$data)
-sdat$contrasts
-sdat$groups
-mean(sdat$data$y)
-sd(sdat$data$y)
-mean(sdat$data$log_x.p.1)
-sd(sdat$data$log_x.p.1)
-with(sdat$data, tapply(z_scaled_by_subj, subj, mean))
-with(sdat$data, tapply(z_scaled_by_subj, subj, sd))
+head(sobj$data)
+sobj$contrasts
+sobj$groups
+mean(sobj$data$y)
+sd(sobj$data$y)
+mean(sobj$data$log_x.p.1)
+sd(sobj$data$log_x.p.1)
+with(sobj$data, tapply(z_scaled_by_subj, subj, mean))
+with(sobj$data, tapply(z_scaled_by_subj, subj, sd))
 
-sdat <- standardize(y ~ log(x + 1) + scale_by(z ~ subj) + ufac + ofac +
+sobj <- standardize(y ~ log(x + 1) + scale_by(z ~ subj) + ufac + ofac +
   (1 | subj), dat, scale = 0.5)
 
-sdat
-sdat$formula
+sobj
+sobj$formula
 head(dat)
-head(sdat$data)
-sdat$contrasts
-sdat$groups
-mean(sdat$data$y)
-sd(sdat$data$y)
-mean(sdat$data$log_x.p.1)
-sd(sdat$data$log_x.p.1)
-with(sdat$data, tapply(z_scaled_by_subj, subj, mean))
-with(sdat$data, tapply(z_scaled_by_subj, subj, sd))
+head(sobj$data)
+sobj$contrasts
+sobj$groups
+mean(sobj$data$y)
+sd(sobj$data$y)
+mean(sobj$data$log_x.p.1)
+sd(sobj$data$log_x.p.1)
+with(sobj$data, tapply(z_scaled_by_subj, subj, mean))
+with(sobj$data, tapply(z_scaled_by_subj, subj, sd))
 
 \dontrun{
-mod <- lmer(sdat$formula, sdat$data)
+mod <- lmer(sobj$formula, sobj$data)
 # this next line causes warnings about contrasts being dropped, but
 # these warnings can be ignored (i.e. the statement still evaluates to TRUE)
-all.equal(predict(mod, newdata = predict(sdat, dat)), fitted(mod))
+all.equal(predict(mod, newdata = predict(sobj, dat)), fitted(mod))
 }
 
 }
