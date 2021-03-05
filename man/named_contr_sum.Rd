@@ -49,7 +49,7 @@ example, \code{scale = 0.5}, then rather than each column containing values
 in \code{-1, 0, 1}, each column would contain values in \code{-0.5, 0, 0.5}.
 If \code{return_contr = TRUE}, then this contrast matrix is
 returned.  If \code{return_contr = FALSE}, then \code{x} is converted to an
-unordered factor with the named sum contrats and returned. \code{NA} is never
+unordered factor with the named sum contrasts and returned. \code{NA} is never
 assigned as a level in the contrast matrix or in the factor returned by the
 function, but \code{NA} values in \code{x} are not removed in the factor
 returned when \code{return_contr = FALSE}. See the examples.
@@ -86,9 +86,10 @@ f
 named_contr_sum(5)
 named_contr_sum(rep(c("a", NA), 3))
 }
-
 }
 \seealso{
 \code{\link{scaled_contr_poly}} for ordered factors.
 }
-
+\author{
+Christopher D. Eager <eager.stats@gmail.com>
+}
